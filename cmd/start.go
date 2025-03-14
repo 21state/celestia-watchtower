@@ -26,36 +26,35 @@ func init() {
 // runStart starts the monitoring engine
 func runStart() {
 	// Load configuration
-	fmt.Println("Loading configuration...")
+	fmt.Println("[INFO] Loading configuration...")
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		fmt.Printf("Error loading configuration: %v\n", err)
-		fmt.Println("Please run 'celestia-watchtower setup' first.")
+		fmt.Printf("[ERROR] Error loading configuration: %v\n", err)
+		fmt.Println("[INFO] Please run 'celestia-watchtower setup' first.")
 		os.Exit(1)
 	}
 
 	// Print configuration details
-	fmt.Println("Configuration loaded successfully")
-	fmt.Printf("RPC Endpoint: '%s'\n", cfg.Node.RPCEndpoint)
-	fmt.Printf("Auth Token: '%s'\n", cfg.Node.AuthToken != "")
-	fmt.Printf("Check Interval: %d seconds\n", cfg.Monitoring.CheckInterval)
+	fmt.Println("[INFO] Configuration loaded successfully")
+	fmt.Printf("[INFO] RPC Endpoint: '%s'\n", cfg.Node.RPCEndpoint)
+	fmt.Printf("[INFO] Auth Token: %v\n", cfg.Node.AuthToken != "")
+	fmt.Printf("[INFO] Check Interval: %d seconds\n", cfg.Monitoring.CheckInterval)
 
-	// Set log level based on config and debug flag
-	isDebugMode := debugMode || cfg.Logging.Level == "debug"
-	fmt.Printf("Debug Mode: %v\n", isDebugMode)
+	// Set debug mode based on command-line flag only
+	fmt.Printf("[INFO] Debug Mode: %v\n", debugMode)
 
 	// Create monitoring engine
-	fmt.Println("Creating monitoring engine...")
-	engine, err := monitor.NewEngine(cfg, isDebugMode)
+	fmt.Println("[INFO] Creating monitoring engine...")
+	engine, err := monitor.NewEngine(cfg, debugMode)
 	if err != nil {
-		fmt.Printf("Error creating monitoring engine: %v\n", err)
+		fmt.Printf("[ERROR] Error creating monitoring engine: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Start monitoring
-	fmt.Println("Starting monitoring...")
+	fmt.Println("[INFO] Starting monitoring...")
 	if err := engine.Start(); err != nil {
-		fmt.Printf("Error starting monitoring: %v\n", err)
+		fmt.Printf("[ERROR] Error starting monitoring: %v\n", err)
 		os.Exit(1)
 	}
 }

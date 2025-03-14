@@ -34,8 +34,8 @@ func runStatus() {
 	// Check if status file exists
 	status, err := monitor.LoadStatus()
 	if err != nil {
-		fmt.Printf("Error loading status: %v\n", err)
-		fmt.Println("Please run 'celestia-watchtower start' first.")
+		fmt.Printf("[ERROR] Error loading status: %v\n", err)
+		fmt.Println("[INFO] Please run 'celestia-watchtower start' first.")
 		os.Exit(1)
 	}
 
@@ -51,12 +51,12 @@ func runStatus() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	fmt.Println("\nWatching for status updates. Press Ctrl+C to exit.")
+	fmt.Println("[INFO] Watching for status updates. Press Ctrl+C to exit.")
 
 	// Load config to get check interval
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		fmt.Printf("Error loading configuration: %v\n", err)
+		fmt.Printf("[ERROR] Error loading configuration: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -71,16 +71,16 @@ func runStatus() {
 			// Load updated status
 			newStatus, err := monitor.LoadStatus()
 			if err != nil {
-				fmt.Printf("Error loading status: %v\n", err)
+				fmt.Printf("[ERROR] Error loading status: %v\n", err)
 				continue
 			}
 
 			// Clear screen and print updated status
 			fmt.Print("\033[H\033[2J") // ANSI escape sequence to clear screen
 			printStatus(newStatus)
-			fmt.Println("\nWatching for status updates. Press Ctrl+C to exit.")
+			fmt.Println("[INFO] Watching for status updates. Press Ctrl+C to exit.")
 		case <-sigCh:
-			fmt.Println("\nExiting...")
+			fmt.Println("[INFO] Exiting...")
 			return
 		}
 	}
@@ -91,31 +91,31 @@ func printStatus(status *monitor.Status) {
 	timestamp := status.Timestamp.Format("2006-01-02 15:04:05")
 	
 	// Health indicator
-	healthStatus := "✅ HEALTHY"
+	healthStatus := "[OK] HEALTHY"
 	if !status.Healthy {
-		healthStatus = "❌ UNHEALTHY"
+		healthStatus = "[!!] UNHEALTHY"
 	}
 	
-	fmt.Printf("[%s] Status: %s\n", timestamp, healthStatus)
+	fmt.Printf("[INFO] [%s] Status: %s\n", timestamp, healthStatus)
 	
 	// Sync status
-	syncHealth := "✅"
+	syncHealth := "[OK]"
 	if !status.SyncHealthy {
-		syncHealth = "❌"
+		syncHealth = "[!!]"
 	}
-	fmt.Printf("  Sync: %s Height: %d/%d (diff: %d) State: %s\n", 
-		syncHealth, status.LocalHeight, status.NetworkHeight, status.HeightDiff, status.SyncState)
+	fmt.Printf("[INFO]   Sync: %s Height: %d/%d (diff: %d)\n", 
+		syncHealth, status.LocalHeight, status.NetworkHeight, status.HeightDiff)
 	
 	// Network status
-	netHealth := "✅"
+	netHealth := "[OK]"
 	if !status.NetHealthy {
-		netHealth = "❌"
+		netHealth = "[!!]"
 	}
-	fmt.Printf("  Network: %s Peers: %d NAT: %s\n", 
+	fmt.Printf("[INFO]   Network: %s Peers: %d NAT: %s\n", 
 		netHealth, status.PeerCount, status.NATStatus)
 	
 	// Bandwidth stats
-	fmt.Printf("  Bandwidth: In: %.2f KB/s (Total: %d MB) Out: %.2f KB/s (Total: %d MB)\n",
+	fmt.Printf("[INFO]   Bandwidth: In: %.2f KB/s (Total: %d MB) Out: %.2f KB/s (Total: %d MB)\n",
 		status.Bandwidth.RateIn/1024, status.Bandwidth.TotalIn/(1024*1024),
 		status.Bandwidth.RateOut/1024, status.Bandwidth.TotalOut/(1024*1024))
 }

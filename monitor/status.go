@@ -18,7 +18,6 @@ type Status struct {
 	NetworkHeight uint64 `json:"network_height"`
 	LocalHeight   uint64 `json:"local_height"`
 	HeightDiff    int64  `json:"height_diff"`
-	SyncState     string `json:"sync_state"`
 	SyncHealthy   bool   `json:"sync_healthy"`
 	
 	// Network status
@@ -42,28 +41,28 @@ type Status struct {
 func SaveStatus(status *Status) error {
 	statusFile, err := config.TempStatusFile()
 	if err != nil {
-		return fmt.Errorf("failed to get status file path: %w", err)
+		return fmt.Errorf("[ERROR] failed to get status file path: %w", err)
 	}
 
 	// Create config directory if it doesn't exist
 	configDir, err := config.ConfigDir()
 	if err != nil {
-		return err
+		return fmt.Errorf("[ERROR] failed to get config directory: %w", err)
 	}
 	
 	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
+		return fmt.Errorf("[ERROR] failed to create config directory: %w", err)
 	}
 
 	// Marshal status to JSON
 	data, err := json.Marshal(status)
 	if err != nil {
-		return fmt.Errorf("failed to marshal status: %w", err)
+		return fmt.Errorf("[ERROR] failed to marshal status: %w", err)
 	}
 
 	// Write status file
 	if err := os.WriteFile(statusFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write status file: %w", err)
+		return fmt.Errorf("[ERROR] failed to write status file: %w", err)
 	}
 
 	return nil
@@ -73,24 +72,24 @@ func SaveStatus(status *Status) error {
 func LoadStatus() (*Status, error) {
 	statusFile, err := config.TempStatusFile()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get status file path: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to get status file path: %w", err)
 	}
 
 	// Check if status file exists
 	if _, err := os.Stat(statusFile); os.IsNotExist(err) {
-		return nil, fmt.Errorf("status file not found, run 'celestia-watchtower start' first")
+		return nil, fmt.Errorf("[ERROR] status file not found, run 'celestia-watchtower start' first")
 	}
 
 	// Read status file
 	data, err := os.ReadFile(statusFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read status file: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to read status file: %w", err)
 	}
 
 	// Parse status
 	status := &Status{}
 	if err := json.Unmarshal(data, status); err != nil {
-		return nil, fmt.Errorf("failed to parse status file: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to parse status file: %w", err)
 	}
 
 	return status, nil
@@ -102,62 +101,55 @@ func CheckNodeStatus(client *rpc.Client, cfg *config.Config) (*Status, error) {
 		Timestamp: time.Now(),
 	}
 
-	// Get network head
+	// Check network height
 	networkHeight, err := client.GetNetworkHead()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get network head: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to get network height: %w", err)
 	}
 	status.NetworkHeight = networkHeight
-
-	// Get local head
+	
+	// Check local height
 	localHeight, err := client.GetLocalHead()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get local head: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to get local height: %w", err)
 	}
 	status.LocalHeight = localHeight
-
+	
 	// Calculate height difference
 	status.HeightDiff = int64(networkHeight) - int64(localHeight)
-
-	// Get sync state
-	syncState, err := client.GetSyncState()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sync state: %w", err)
-	}
-	status.SyncState = syncState
-
+	
 	// Check sync health
 	status.SyncHealthy = status.HeightDiff <= int64(cfg.Thresholds.SyncStatus.BlocksBehindCritical)
-
-	// Get peers
+	
+	// Check peer count
 	peerCount, err := client.GetPeers()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get peers: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to get peer count: %w", err)
 	}
 	status.PeerCount = peerCount
-
-	// Get NAT status
+	
+	// Check NAT status
 	natStatus, err := client.GetNATStatus()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get NAT status: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to get NAT status: %w", err)
 	}
 	status.NATStatus = natStatus
-
+	
 	// Check network health
 	status.NetHealthy = peerCount >= cfg.Thresholds.Network.MinPeersHealthy
-
-	// Get bandwidth stats
+	
+	// Check bandwidth stats
 	bandwidthStats, err := client.GetBandwidthStats()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get bandwidth stats: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to get bandwidth stats: %w", err)
 	}
 	status.Bandwidth.TotalIn = bandwidthStats.TotalIn
 	status.Bandwidth.TotalOut = bandwidthStats.TotalOut
 	status.Bandwidth.RateIn = bandwidthStats.RateIn
 	status.Bandwidth.RateOut = bandwidthStats.RateOut
-
+	
 	// Overall health
 	status.Healthy = status.SyncHealthy && status.NetHealthy
-
+	
 	return status, nil
 }

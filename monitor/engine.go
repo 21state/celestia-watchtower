@@ -30,23 +30,23 @@ func NewEngine(cfg *config.Config, isDebugMode bool) (*Engine, error) {
 
 	// Validate configuration
 	if cfg == nil {
-		return nil, fmt.Errorf("configuration is nil")
+		return nil, fmt.Errorf("[ERROR] configuration is nil")
 	}
 
 	// Debug output
 	if isDebugMode {
-		fmt.Printf("Debug: RPC Endpoint = '%s'\n", cfg.Node.RPCEndpoint)
-		fmt.Printf("Debug: Auth Token = '%s'\n", cfg.Node.AuthToken)
+		fmt.Printf("[DEBUG] RPC Endpoint = '%s'\n", cfg.Node.RPCEndpoint)
+		fmt.Printf("[DEBUG] Auth Token = '%s'\n", cfg.Node.AuthToken != "")
 	}
 
 	// Validate RPC endpoint
 	if cfg.Node.RPCEndpoint == "" {
-		return nil, fmt.Errorf("RPC endpoint cannot be empty")
+		return nil, fmt.Errorf("[ERROR] RPC endpoint cannot be empty")
 	}
 
 	client, err := rpc.NewClient(ctx, cfg.Node.RPCEndpoint, cfg.Node.AuthToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create RPC client: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to create RPC client: %w", err)
 	}
 
 	alerter := alert.NewManager(cfg)
@@ -63,8 +63,8 @@ func NewEngine(cfg *config.Config, isDebugMode bool) (*Engine, error) {
 
 // Start starts the monitoring engine
 func (e *Engine) Start() error {
-	fmt.Println("🔭 Celestia Watchtower started - Developed by 21state")
-	fmt.Printf("Monitoring %s every %d seconds\n", e.config.Node.RPCEndpoint, e.config.Monitoring.CheckInterval)
+	fmt.Println("[INFO] 🔭 Celestia Watchtower started")
+	fmt.Printf("[INFO] Monitoring %s every %d seconds\n", e.config.Node.RPCEndpoint, e.config.Monitoring.CheckInterval)
 
 	// Set up signal handling for graceful shutdown
 	sigCh := make(chan os.Signal, 1)
@@ -74,7 +74,7 @@ func (e *Engine) Start() error {
 	ticker := time.NewTicker(time.Duration(e.config.Monitoring.CheckInterval) * time.Second)
 	defer ticker.Stop()
 
-	// Run initial check immediately
+	// Initial check
 	if err := e.runCheck(); err != nil {
 		logError("Initial check failed: %v", err)
 	}
@@ -87,8 +87,8 @@ func (e *Engine) Start() error {
 				logError("Check failed: %v", err)
 			}
 		case <-sigCh:
-			fmt.Println("\nShutting down...")
-			e.cancel()
+			fmt.Println("[INFO] Shutting down...")
+			e.Stop()
 			return nil
 		case <-e.ctx.Done():
 			return nil
@@ -111,101 +111,120 @@ func (e *Engine) runCheck() error {
 	// Check node status
 	status, err := CheckNodeStatus(e.client, e.config)
 	if err != nil {
-		return err
+		return fmt.Errorf("[ERROR] failed to check node status: %w", err)
 	}
 
 	// Save status
 	if err := SaveStatus(status); err != nil {
-		return fmt.Errorf("failed to save status: %w", err)
+		return fmt.Errorf("[ERROR] failed to save status: %w", err)
 	}
-
-	// Check if we need to send alerts
-	if e.lastStatus != nil && e.lastStatus.Healthy && !status.Healthy {
-		// Node has become unhealthy, send alert
-		if err := e.sendAlerts(status); err != nil {
-			logError("Failed to send alerts: %v", err)
-		}
-	}
-
-	// Print status
-	e.printStatus(status)
 
 	// Update last status
 	e.lastStatus = status
 
+	// Always print basic status in info mode
+	e.printInfoStatus(status)
+	
+	// Print detailed status if debug mode is enabled
+	if e.isDebugMode {
+		e.printDebugStatus(status)
+	}
+
+	// Send alerts if needed
+	if !status.Healthy && e.config.Alerts.Enabled {
+		if err := e.sendAlerts(status); err != nil {
+			return fmt.Errorf("[ERROR] failed to send alerts: %w", err)
+		}
+	}
+
 	return nil
 }
 
-// printStatus prints the current node status
-func (e *Engine) printStatus(status *Status) {
+// printInfoStatus prints basic status information in info mode
+func (e *Engine) printInfoStatus(status *Status) {
 	timestamp := status.Timestamp.Format("2006-01-02 15:04:05")
 	
 	// Health indicator
-	healthStatus := "✅ HEALTHY"
+	healthStatus := "[OK] HEALTHY"
 	if !status.Healthy {
-		healthStatus = "❌ UNHEALTHY"
+		healthStatus = "[!!] UNHEALTHY"
 	}
 	
-	fmt.Printf("[%s] Status: %s\n", timestamp, healthStatus)
+	// Format bandwidth rates in KB/s and totals in MB
+	inRate := status.Bandwidth.RateIn / 1024
+	outRate := status.Bandwidth.RateOut / 1024
+	inTotal := float64(status.Bandwidth.TotalIn) / (1024 * 1024)
+	outTotal := float64(status.Bandwidth.TotalOut) / (1024 * 1024)
 	
+	fmt.Printf("[INFO] [%s] Status: %s | Height: %d/%d | Peers: %d | NAT: %s | BW (in/out): %.1f/%.1f KB/s (Total: %.1f/%.1f MB)\n", 
+		timestamp, 
+		healthStatus, 
+		status.LocalHeight, 
+		status.NetworkHeight, 
+		status.PeerCount,
+		status.NATStatus,
+		inRate, outRate,
+		inTotal, outTotal)
+}
+
+// printDebugStatus prints detailed status information in debug mode
+func (e *Engine) printDebugStatus(status *Status) {
 	// Sync status
-	syncHealth := "✅"
+	syncHealth := "[OK]"
 	if !status.SyncHealthy {
-		syncHealth = "❌"
+		syncHealth = "[!!]"
 	}
-	fmt.Printf("  Sync: %s Height: %d/%d (diff: %d) State: %s\n", 
-		syncHealth, status.LocalHeight, status.NetworkHeight, status.HeightDiff, status.SyncState)
+	fmt.Printf("[DEBUG]   Sync: %s Height: %d/%d (diff: %d)\n", 
+		syncHealth, status.LocalHeight, status.NetworkHeight, status.HeightDiff)
 	
 	// Network status
-	netHealth := "✅"
+	netHealth := "[OK]"
 	if !status.NetHealthy {
-		netHealth = "❌"
+		netHealth = "[!!]"
 	}
-	fmt.Printf("  Network: %s Peers: %d NAT: %s\n", 
+	fmt.Printf("[DEBUG]   Network: %s Peers: %d NAT: %s\n", 
 		netHealth, status.PeerCount, status.NATStatus)
 	
-	// Bandwidth stats
-	fmt.Printf("  Bandwidth: In: %.2f KB/s (Total: %d MB) Out: %.2f KB/s (Total: %d MB)\n",
-		status.Bandwidth.RateIn/1024, status.Bandwidth.TotalIn/(1024*1024),
-		status.Bandwidth.RateOut/1024, status.Bandwidth.TotalOut/(1024*1024))
-	
-	// Print debug info if in debug mode
-	if e.isDebugMode {
-		fmt.Println("  Debug info:")
-		fmt.Printf("    SyncHealthy: %v (threshold: %d blocks)\n", 
-			status.SyncHealthy, e.config.Thresholds.SyncStatus.BlocksBehindCritical)
-		fmt.Printf("    NetHealthy: %v (threshold: %d peers)\n", 
-			status.NetHealthy, e.config.Thresholds.Network.MinPeersHealthy)
-	}
+	// Format bandwidth rates in KB/s and totals in MB
+	inRate := status.Bandwidth.RateIn / 1024
+	outRate := status.Bandwidth.RateOut / 1024
+	inTotal := float64(status.Bandwidth.TotalIn) / (1024 * 1024)
+	outTotal := float64(status.Bandwidth.TotalOut) / (1024 * 1024)
+	fmt.Printf("[DEBUG]   Bandwidth: In: %.2f KB/s (Total: %.2f MB) Out: %.2f KB/s (Total: %.2f MB)\n",
+		inRate, inTotal,
+		outRate, outTotal)
 }
 
 // sendAlerts sends alerts to all configured channels
 func (e *Engine) sendAlerts(status *Status) error {
-	var alertMessage string
+	// Prepare alert message
+	message := fmt.Sprintf("⚠️ Celestia Node Alert ⚠️\n\n")
 	
-	// Determine which check failed
+	// Add timestamp
+	message += fmt.Sprintf("Time: %s\n\n", status.Timestamp.Format("2006-01-02 15:04:05"))
+	
+	// Add sync status if unhealthy
 	if !status.SyncHealthy {
-		alertMessage = fmt.Sprintf("⚠️ Sync issue detected! Node is %d blocks behind the network.", status.HeightDiff)
-	} else if !status.NetHealthy {
-		alertMessage = fmt.Sprintf("⚠️ Network issue detected! Node has only %d peers (minimum: %d).", 
-			status.PeerCount, e.config.Thresholds.Network.MinPeersHealthy)
-	} else {
-		alertMessage = "⚠️ Node is unhealthy! Check the logs for more details."
+		message += fmt.Sprintf("❌ Sync Issue: Node is %d blocks behind the network\n", status.HeightDiff)
+		message += fmt.Sprintf("   Local Height: %d, Network Height: %d\n\n", status.LocalHeight, status.NetworkHeight)
 	}
 	
-	// Add timestamp and node info
-	fullMessage := fmt.Sprintf("%s\nTimestamp: %s\nNode: %s\nLocal Height: %d\nNetwork Height: %d\nPeers: %d",
-		alertMessage, status.Timestamp.Format(time.RFC1123),
-		e.config.Node.RPCEndpoint, status.LocalHeight, status.NetworkHeight, status.PeerCount)
-	
-	// Log the alert
-	fmt.Printf("Sending alert: %s\n", alertMessage)
+	// Add network status if unhealthy
+	if !status.NetHealthy {
+		message += fmt.Sprintf("❌ Network Issue: Node has only %d peers (min: %d)\n", 
+			status.PeerCount, e.config.Thresholds.Network.MinPeersHealthy)
+		message += fmt.Sprintf("   NAT Status: %s\n\n", status.NATStatus)
+	}
 	
 	// Send alert
-	return e.alerter.SendAlert(fullMessage)
+	if err := e.alerter.SendAlert(message); err != nil {
+		return fmt.Errorf("[ERROR] failed to send alert: %w", err)
+	}
+	
+	return nil
 }
 
 // logError logs an error message
 func logError(format string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, "ERROR: "+format+"\n", args...)
+	fmt.Printf("[ERROR] %s\n", fmt.Sprintf(format, args...))
 }

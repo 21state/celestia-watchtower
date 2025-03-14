@@ -25,12 +25,12 @@ type BandwidthStats struct {
 func NewClient(ctx context.Context, rpcEndpoint, authToken string) (*Client, error) {
 	// Validate the RPC endpoint
 	if rpcEndpoint == "" {
-		return nil, fmt.Errorf("RPC endpoint cannot be empty")
+		return nil, fmt.Errorf("[ERROR] RPC endpoint cannot be empty")
 	}
 
 	client, err := openrpc.NewClient(ctx, rpcEndpoint, authToken)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create RPC client: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to create RPC client: %w", err)
 	}
 
 	return &Client{
@@ -43,7 +43,7 @@ func NewClient(ctx context.Context, rpcEndpoint, authToken string) (*Client, err
 func (c *Client) GetNetworkHead() (uint64, error) {
 	header, err := c.client.Header.NetworkHead(c.ctx)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get network head: %w", err)
+		return 0, fmt.Errorf("[ERROR] failed to get network head: %w", err)
 	}
 
 	return header.Height(), nil
@@ -53,30 +53,17 @@ func (c *Client) GetNetworkHead() (uint64, error) {
 func (c *Client) GetLocalHead() (uint64, error) {
 	header, err := c.client.Header.LocalHead(c.ctx)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get local head: %w", err)
+		return 0, fmt.Errorf("[ERROR] failed to get local head: %w", err)
 	}
 
 	return header.Height(), nil
-}
-
-// GetSyncState returns the sync state as a string
-func (c *Client) GetSyncState() (string, error) {
-	syncState, err := c.client.Header.SyncState(c.ctx)
-	if err != nil {
-		return "", fmt.Errorf("failed to get sync state: %w", err)
-	}
-
-	// Convert the sync state to a string
-	// Since we can't directly switch on the sync.State type,
-	// we'll use the String() method if available, or return a generic description
-	return fmt.Sprintf("%v", syncState), nil
 }
 
 // GetPeers returns the number of connected peers
 func (c *Client) GetPeers() (int, error) {
 	peers, err := c.client.P2P.Peers(c.ctx)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get peers: %w", err)
+		return 0, fmt.Errorf("[ERROR] failed to get peers: %w", err)
 	}
 
 	return len(peers), nil
@@ -86,7 +73,7 @@ func (c *Client) GetPeers() (int, error) {
 func (c *Client) GetNATStatus() (string, error) {
 	natStatus, err := c.client.P2P.NATStatus(c.ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get NAT status: %w", err)
+		return "", fmt.Errorf("[ERROR] failed to get NAT status: %w", err)
 	}
 
 	return natStatus.String(), nil
@@ -96,7 +83,7 @@ func (c *Client) GetNATStatus() (string, error) {
 func (c *Client) GetBandwidthStats() (*BandwidthStats, error) {
 	stats, err := c.client.P2P.BandwidthStats(c.ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get bandwidth stats: %w", err)
+		return nil, fmt.Errorf("[ERROR] failed to get bandwidth stats: %w", err)
 	}
 
 	// The API returns the values directly, no need to parse

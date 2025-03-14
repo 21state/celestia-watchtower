@@ -6,56 +6,51 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
-	"github.com/spf13/viper"
 )
 
 // Config represents the application configuration
 type Config struct {
 	Node struct {
-		RPCEndpoint string `yaml:"rpc_endpoint" mapstructure:"rpc_endpoint"`
-		AuthToken   string `yaml:"auth_token" mapstructure:"auth_token"`
-	} `yaml:"node" mapstructure:"node"`
+		RPCEndpoint string `yaml:"rpc_endpoint"`
+		AuthToken   string `yaml:"auth_token"`
+	} `yaml:"node"`
 
 	Monitoring struct {
-		CheckInterval int `yaml:"check_interval" mapstructure:"check_interval"` // in seconds
-	} `yaml:"monitoring" mapstructure:"monitoring"`
+		CheckInterval int `yaml:"check_interval"` // in seconds
+	} `yaml:"monitoring"`
 
 	Alerts struct {
-		Enabled bool `yaml:"enabled" mapstructure:"enabled"`
+		Enabled bool `yaml:"enabled"`
 
 		Telegram struct {
-			Enabled  bool   `yaml:"enabled" mapstructure:"enabled"`
-			BotToken string `yaml:"bot_token" mapstructure:"bot_token"`
-			ChatID   string `yaml:"chat_id" mapstructure:"chat_id"`
-		} `yaml:"telegram" mapstructure:"telegram"`
+			Enabled  bool   `yaml:"enabled"`
+			BotToken string `yaml:"bot_token"`
+			ChatID   string `yaml:"chat_id"`
+		} `yaml:"telegram"`
 
 		Discord struct {
-			Enabled bool   `yaml:"enabled" mapstructure:"enabled"`
-			Webhook string `yaml:"webhook" mapstructure:"webhook"`
-		} `yaml:"discord" mapstructure:"discord"`
+			Enabled bool   `yaml:"enabled"`
+			Webhook string `yaml:"webhook"`
+		} `yaml:"discord"`
 
 		Twilio struct {
-			Enabled     bool   `yaml:"enabled" mapstructure:"enabled"`
-			AccountSID  string `yaml:"account_sid" mapstructure:"account_sid"`
-			AuthToken   string `yaml:"auth_token" mapstructure:"auth_token"`
-			FromNumber  string `yaml:"from_number" mapstructure:"from_number"`
-			ToNumber    string `yaml:"to_number" mapstructure:"to_number"`
-		} `yaml:"twilio" mapstructure:"twilio"`
-	} `yaml:"alerts" mapstructure:"alerts"`
+			Enabled     bool   `yaml:"enabled"`
+			AccountSID  string `yaml:"account_sid"`
+			AuthToken   string `yaml:"auth_token"`
+			FromNumber  string `yaml:"from_number"`
+			ToNumber    string `yaml:"to_number"`
+		} `yaml:"twilio"`
+	} `yaml:"alerts"`
 
 	Thresholds struct {
 		SyncStatus struct {
-			BlocksBehindCritical int `yaml:"blocks_behind_critical" mapstructure:"blocks_behind_critical"`
-		} `yaml:"sync_status" mapstructure:"sync_status"`
+			BlocksBehindCritical int `yaml:"blocks_behind_critical"`
+		} `yaml:"sync_status"`
 
 		Network struct {
-			MinPeersHealthy int `yaml:"min_peers_healthy" mapstructure:"min_peers_healthy"`
-		} `yaml:"network" mapstructure:"network"`
-	} `yaml:"thresholds" mapstructure:"thresholds"`
-
-	Logging struct {
-		Level string `yaml:"level" mapstructure:"level"` // info, debug
-	} `yaml:"logging" mapstructure:"logging"`
+			MinPeersHealthy int `yaml:"min_peers_healthy"`
+		} `yaml:"network"`
+	} `yaml:"thresholds"`
 }
 
 // DefaultConfig returns a default configuration
@@ -89,9 +84,6 @@ func DefaultConfig() *Config {
 	// Threshold defaults
 	cfg.Thresholds.SyncStatus.BlocksBehindCritical = 10
 	cfg.Thresholds.Network.MinPeersHealthy = 5
-
-	// Logging defaults
-	cfg.Logging.Level = "info"
 
 	return cfg
 }

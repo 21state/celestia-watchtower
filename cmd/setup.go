@@ -27,7 +27,7 @@ func init() {
 
 // runSetup runs the setup process
 func runSetup() {
-	fmt.Println("🔧 Celestia Watchtower Setup - Developed by 21state")
+	fmt.Println("🔧 Celestia Watchtower Setup")
 	fmt.Println("This wizard will help you configure the watchtower.")
 	fmt.Println("Press Enter to accept the default values shown in [brackets].")
 	fmt.Println()
@@ -97,8 +97,7 @@ func runSetup() {
 
 	// Logging settings
 	fmt.Println("📝 Logging Settings")
-	logLevel := promptString(reader, "Log Level (info/debug)", cfg.Logging.Level)
-	cfg.Logging.Level = logLevel
+	fmt.Println("Use the 'celestia-watchtower start --debug' flag to enable debug logging.")
 	fmt.Println()
 
 	// Save config
