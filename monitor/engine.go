@@ -140,6 +140,16 @@ func (e *Engine) runCheck() error {
 	return nil
 }
 
+// formatDataSize formats data size with appropriate units (MB or GB)
+func formatDataSize(bytes float64) (float64, string) {
+	const GB = 1024.0
+	
+	if bytes >= GB {
+		return bytes / GB, "GB"
+	}
+	return bytes, "MB"
+}
+
 // printInfoStatus prints basic status information in info mode
 func (e *Engine) printInfoStatus(status *Status) {
 	timestamp := status.Timestamp.Format("2006-01-02 15:04:05")
@@ -150,13 +160,17 @@ func (e *Engine) printInfoStatus(status *Status) {
 		healthStatus = "[!!] UNHEALTHY"
 	}
 	
-	// Format bandwidth rates in KB/s and totals in MB
+	// Format bandwidth rates in KB/s and totals in MB or GB
 	inRate := status.Bandwidth.RateIn / 1024
 	outRate := status.Bandwidth.RateOut / 1024
-	inTotal := float64(status.Bandwidth.TotalIn) / (1024 * 1024)
-	outTotal := float64(status.Bandwidth.TotalOut) / (1024 * 1024)
 	
-	fmt.Printf("[INFO] [%s] Status: %s | Height: %d/%d | Peers: %d | NAT: %s | BW (in/out): %.1f/%.1f KB/s (Total: %.1f/%.1f MB)\n", 
+	inTotalMB := float64(status.Bandwidth.TotalIn) / (1024 * 1024)
+	outTotalMB := float64(status.Bandwidth.TotalOut) / (1024 * 1024)
+	
+	inTotalValue, inTotalUnit := formatDataSize(inTotalMB)
+	outTotalValue, outTotalUnit := formatDataSize(outTotalMB)
+	
+	fmt.Printf("[INFO] [%s] Status: %s | Height: %d/%d | Peers: %d | NAT: %s | BW (in/out): %.1f/%.1f KB/s (Total: %.1f %s/%.1f %s)\n", 
 		timestamp, 
 		healthStatus, 
 		status.LocalHeight, 
@@ -164,7 +178,7 @@ func (e *Engine) printInfoStatus(status *Status) {
 		status.PeerCount,
 		status.NATStatus,
 		inRate, outRate,
-		inTotal, outTotal)
+		inTotalValue, inTotalUnit, outTotalValue, outTotalUnit)
 }
 
 // printDebugStatus prints detailed status information in debug mode
@@ -185,14 +199,19 @@ func (e *Engine) printDebugStatus(status *Status) {
 	fmt.Printf("[DEBUG]   Network: %s Peers: %d NAT: %s\n", 
 		netHealth, status.PeerCount, status.NATStatus)
 	
-	// Format bandwidth rates in KB/s and totals in MB
+	// Format bandwidth rates in KB/s and totals in MB or GB
 	inRate := status.Bandwidth.RateIn / 1024
 	outRate := status.Bandwidth.RateOut / 1024
-	inTotal := float64(status.Bandwidth.TotalIn) / (1024 * 1024)
-	outTotal := float64(status.Bandwidth.TotalOut) / (1024 * 1024)
-	fmt.Printf("[DEBUG]   Bandwidth: In: %.2f KB/s (Total: %.2f MB) Out: %.2f KB/s (Total: %.2f MB)\n",
-		inRate, inTotal,
-		outRate, outTotal)
+	
+	inTotalMB := float64(status.Bandwidth.TotalIn) / (1024 * 1024)
+	outTotalMB := float64(status.Bandwidth.TotalOut) / (1024 * 1024)
+	
+	inTotalValue, inTotalUnit := formatDataSize(inTotalMB)
+	outTotalValue, outTotalUnit := formatDataSize(outTotalMB)
+	
+	fmt.Printf("[DEBUG]   Bandwidth: In: %.2f KB/s (Total: %.2f %s) Out: %.2f KB/s (Total: %.2f %s)\n",
+		inRate, inTotalValue, inTotalUnit,
+		outRate, outTotalValue, outTotalUnit)
 }
 
 // sendAlerts sends alerts to all configured channels
