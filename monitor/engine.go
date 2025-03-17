@@ -135,14 +135,46 @@ func (e *Engine) runCheck() error {
 	return nil
 }
 
-// formatDataSize formats data size with appropriate units (MB or GB)
+// formatDataSize formats a byte value into the most appropriate unit
+// Returns the converted value and the unit string
 func formatDataSize(bytes float64) (float64, string) {
-	const GB = 1024.0
-	
-	if bytes >= GB {
-		return bytes / GB, "GB"
-	}
-	return bytes, "MB"
+    const (
+        KB = 1024.0
+        MB = KB * 1024.0
+        GB = MB * 1024.0
+        TB = GB * 1024.0
+    )
+    
+    units := []struct {
+        divisor float64
+        unit    string
+    }{
+        {TB, "TB"},
+        {GB, "GB"},
+        {MB, "MB"},
+        {KB, "KB"},
+    }
+    
+    for _, u := range units {
+        if bytes >= u.divisor {
+            return bytes / u.divisor, u.unit
+        }
+    }
+    
+    return bytes, "B"
+}
+
+// formatBandwidth formats bandwidth metrics consistently
+func formatBandwidth(status *Status) (inRate, outRate float64, inTotal, inUnit, outTotal, outUnit string) {
+    // Convert rates to KB/s
+    inRate = status.Bandwidth.RateIn / 1024.0
+    outRate = status.Bandwidth.RateOut / 1024.0
+    
+    // Format totals with appropriate units
+    inTotalVal, inUnit := formatDataSize(float64(status.Bandwidth.TotalIn))
+    outTotalVal, outUnit := formatDataSize(float64(status.Bandwidth.TotalOut))
+    
+    return inRate, outRate, fmt.Sprintf("%.2f", inTotalVal), inUnit, fmt.Sprintf("%.2f", outTotalVal), outUnit
 }
 
 // printInfoStatus prints basic status information in info mode
@@ -155,25 +187,17 @@ func (e *Engine) printInfoStatus(status *Status) {
 		healthStatus = "[!!] UNHEALTHY"
 	}
 	
-	// Format bandwidth rates in KB/s and totals in MB or GB
-	inRate := status.Bandwidth.RateIn / 1024
-	outRate := status.Bandwidth.RateOut / 1024
+	inRate, outRate, inTotal, inUnit, outTotal, outUnit := formatBandwidth(status)
 	
-	inTotalMB := float64(status.Bandwidth.TotalIn) / (1024 * 1024)
-	outTotalMB := float64(status.Bandwidth.TotalOut) / (1024 * 1024)
-	
-	inTotalValue, inTotalUnit := formatDataSize(inTotalMB)
-	outTotalValue, outTotalUnit := formatDataSize(outTotalMB)
-	
-	fmt.Printf("[INFO] [%s] Status: %s | Height: %d/%d | Peers: %d | NAT: %s | In: %.1f KB/s (%.1f %s) | Out: %.1f KB/s (%.1f %s)\n", 
+	fmt.Printf("[INFO] [%s] Status: %s | Height: %d/%d | Peers: %d | NAT: %s | In: %.1f KB/s (%s %s) | Out: %.1f KB/s (%s %s)\n", 
 		timestamp, 
 		healthStatus, 
 		status.LocalHeight, 
 		status.NetworkHeight, 
 		status.PeerCount,
 		status.NATStatus,
-		inRate, inTotalValue, inTotalUnit,
-		outRate, outTotalValue, outTotalUnit)
+		inRate, inTotal, inUnit,
+		outRate, outTotal, outUnit)
 }
 
 // printDebugStatus prints detailed status information in debug mode
@@ -194,19 +218,11 @@ func (e *Engine) printDebugStatus(status *Status) {
 	fmt.Printf("[DEBUG]   Network: %s Peers: %d NAT: %s\n", 
 		netHealth, status.PeerCount, status.NATStatus)
 	
-	// Format bandwidth rates in KB/s and totals in MB or GB
-	inRate := status.Bandwidth.RateIn / 1024
-	outRate := status.Bandwidth.RateOut / 1024
+	inRate, outRate, inTotal, inUnit, outTotal, outUnit := formatBandwidth(status)
 	
-	inTotalMB := float64(status.Bandwidth.TotalIn) / (1024 * 1024)
-	outTotalMB := float64(status.Bandwidth.TotalOut) / (1024 * 1024)
-	
-	inTotalValue, inTotalUnit := formatDataSize(inTotalMB)
-	outTotalValue, outTotalUnit := formatDataSize(outTotalMB)
-	
-	fmt.Printf("[DEBUG]   Bandwidth: In: %.2f KB/s (Total: %.2f %s) Out: %.2f KB/s (Total: %.2f %s)\n",
-		inRate, inTotalValue, inTotalUnit,
-		outRate, outTotalValue, outTotalUnit)
+	fmt.Printf("[DEBUG]   Bandwidth: In: %.2f KB/s (Total: %s %s) Out: %.2f KB/s (Total: %s %s)\n",
+		inRate, inTotal, inUnit,
+		outRate, outTotal, outUnit)
 }
 
 // sendAlerts sends alerts to all configured channels
