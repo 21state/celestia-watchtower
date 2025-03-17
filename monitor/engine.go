@@ -114,11 +114,6 @@ func (e *Engine) runCheck() error {
 		return fmt.Errorf("[ERROR] failed to check node status: %w", err)
 	}
 
-	// Save status
-	if err := SaveStatus(status); err != nil {
-		return fmt.Errorf("[ERROR] failed to save status: %w", err)
-	}
-
 	// Update last status
 	e.lastStatus = status
 
@@ -170,15 +165,15 @@ func (e *Engine) printInfoStatus(status *Status) {
 	inTotalValue, inTotalUnit := formatDataSize(inTotalMB)
 	outTotalValue, outTotalUnit := formatDataSize(outTotalMB)
 	
-	fmt.Printf("[INFO] [%s] Status: %s | Height: %d/%d | Peers: %d | NAT: %s | BW (in/out): %.1f/%.1f KB/s (Total: %.1f %s/%.1f %s)\n", 
+	fmt.Printf("[INFO] [%s] Status: %s | Height: %d/%d | Peers: %d | NAT: %s | In: %.1f KB/s (%.1f %s) | Out: %.1f KB/s (%.1f %s)\n", 
 		timestamp, 
 		healthStatus, 
 		status.LocalHeight, 
 		status.NetworkHeight, 
 		status.PeerCount,
 		status.NATStatus,
-		inRate, outRate,
-		inTotalValue, inTotalUnit, outTotalValue, outTotalUnit)
+		inRate, inTotalValue, inTotalUnit,
+		outRate, outTotalValue, outTotalUnit)
 }
 
 // printDebugStatus prints detailed status information in debug mode

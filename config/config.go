@@ -108,16 +108,6 @@ func ConfigFile() (string, error) {
 	return filepath.Join(configDir, "config.yaml"), nil
 }
 
-// TempStatusFile returns the path to the temporary status file
-func TempStatusFile() (string, error) {
-	configDir, err := ConfigDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(configDir, "status.json"), nil
-}
-
 // SaveConfig saves the configuration to the config file
 func SaveConfig(cfg *Config) error {
 	configFile, err := ConfigFile()
