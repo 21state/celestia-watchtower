@@ -5,9 +5,6 @@ import (
 )
 
 var (
-	// Used for flags
-	debugMode bool
-
 	// rootCmd represents the base command
 	rootCmd = &cobra.Command{
 		Use:   "celestia-watchtower",
@@ -20,8 +17,4 @@ It checks the node's status periodically and sends alerts if issues are detected
 // Execute executes the root command
 func Execute() error {
 	return rootCmd.Execute()
-}
-
-func init() {
-	rootCmd.PersistentFlags().BoolVar(&debugMode, "debug", false, "Enable debug mode")
 }

@@ -40,21 +40,18 @@ func runStart() {
 	fmt.Printf("[INFO] Auth Token: %v\n", cfg.Node.AuthToken != "")
 	fmt.Printf("[INFO] Check Interval: %d seconds\n", cfg.Monitoring.CheckInterval)
 
-	// Set debug mode based on command-line flag only
-	fmt.Printf("[INFO] Debug Mode: %v\n", debugMode)
-
 	// Create monitoring engine
 	fmt.Println("[INFO] Creating monitoring engine...")
-	engine, err := monitor.NewEngine(cfg, debugMode)
+	engine, err := monitor.NewEngine(cfg)
 	if err != nil {
 		fmt.Printf("[ERROR] Error creating monitoring engine: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Start monitoring
-	fmt.Println("[INFO] Starting monitoring...")
+	fmt.Println("[INFO] Starting monitoring engine...")
 	if err := engine.Start(); err != nil {
-		fmt.Printf("[ERROR] Error starting monitoring: %v\n", err)
+		fmt.Printf("[ERROR] Error starting monitoring engine: %v\n", err)
 		os.Exit(1)
 	}
 }

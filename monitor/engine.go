@@ -21,22 +21,15 @@ type Engine struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	lastStatus  *Status
-	isDebugMode bool
 }
 
 // NewEngine creates a new monitoring engine
-func NewEngine(cfg *config.Config, isDebugMode bool) (*Engine, error) {
+func NewEngine(cfg *config.Config) (*Engine, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Validate configuration
 	if cfg == nil {
 		return nil, fmt.Errorf("[ERROR] configuration is nil")
-	}
-
-	// Debug output
-	if isDebugMode {
-		fmt.Printf("[DEBUG] RPC Endpoint = '%s'\n", cfg.Node.RPCEndpoint)
-		fmt.Printf("[DEBUG] Auth Token = '%s'\n", cfg.Node.AuthToken != "")
 	}
 
 	// Validate RPC endpoint
@@ -57,7 +50,6 @@ func NewEngine(cfg *config.Config, isDebugMode bool) (*Engine, error) {
 		alerter:     alerter,
 		ctx:         ctx,
 		cancel:      cancel,
-		isDebugMode: isDebugMode,
 	}, nil
 }
 
@@ -119,11 +111,6 @@ func (e *Engine) runCheck() error {
 
 	// Always print basic status in info mode
 	e.printInfoStatus(status)
-	
-	// Print detailed status if debug mode is enabled
-	if e.isDebugMode {
-		e.printDebugStatus(status)
-	}
 
 	// Send alerts if needed
 	if !status.Healthy && e.config.Alerts.Enabled {
@@ -196,31 +183,6 @@ func (e *Engine) printInfoStatus(status *Status) {
 		status.NetworkHeight, 
 		status.PeerCount,
 		status.NATStatus,
-		inRate, inTotal, inUnit,
-		outRate, outTotal, outUnit)
-}
-
-// printDebugStatus prints detailed status information in debug mode
-func (e *Engine) printDebugStatus(status *Status) {
-	// Sync status
-	syncHealth := "[OK]"
-	if !status.SyncHealthy {
-		syncHealth = "[!!]"
-	}
-	fmt.Printf("[DEBUG]   Sync: %s Height: %d/%d (diff: %d)\n", 
-		syncHealth, status.LocalHeight, status.NetworkHeight, status.HeightDiff)
-	
-	// Network status
-	netHealth := "[OK]"
-	if !status.NetHealthy {
-		netHealth = "[!!]"
-	}
-	fmt.Printf("[DEBUG]   Network: %s Peers: %d NAT: %s\n", 
-		netHealth, status.PeerCount, status.NATStatus)
-	
-	inRate, outRate, inTotal, inUnit, outTotal, outUnit := formatBandwidth(status)
-	
-	fmt.Printf("[DEBUG]   Bandwidth: In: %.2f KB/s (Total: %s %s) Out: %.2f KB/s (Total: %s %s)\n",
 		inRate, inTotal, inUnit,
 		outRate, outTotal, outUnit)
 }

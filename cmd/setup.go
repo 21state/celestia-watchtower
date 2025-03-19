@@ -95,11 +95,6 @@ func runSetup() {
 	}
 	fmt.Println()
 
-	// Logging settings
-	fmt.Println("📝 Logging Settings")
-	fmt.Println("Use the 'celestia-watchtower start --debug' flag to enable debug logging.")
-	fmt.Println()
-
 	// Save config
 	if err := config.SaveConfig(cfg); err != nil {
 		fmt.Printf("Error saving configuration: %v\n", err)
